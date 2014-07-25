@@ -49,6 +49,10 @@
 
     var getTree = function (element) {
       var elems = [];
+      // element.elements() may return nil children.
+      if (element.isNil()) {
+        return elems;
+      }
       // process element
       var visible = element.isVisible() === 1;
       var elType = element.type();
@@ -145,10 +149,12 @@
     if (!onlyFirst || results.length === 0) {
       var child;
       for (var a = 0, len = this.elements().length; a < len; a++) {
-          child = this.elements()[a];
+        child = this.elements()[a];
+        if (!child.isNil()) {
           results = results.concat(child
                       ._elementOrElementsWithPredicateWeighted(predicate,
                         weighting, onlyFirst, onlyVisible));
+        }
       }
     }
 
@@ -157,20 +163,35 @@
     return results;
   };
 
+ var _formatPredicate = function (targetName, contains) {
+   targetName = targetName || "";
+
+   if (typeof targetName !== 'string'){
+     throw new Error("You must supply a string for an element predicate search.");
+   }
+
+   // escape unescaped single and double quotation marks and return a predicate condition
+   // string in the format 'name VERB "TARGET" || label VERB "TARGET"'.
+   var verb = contains ? 'contains[c]' : '==';
+   var comparison = verb + ' "' + targetName.replace(/\\?['"]/g, "\\$&") + '"';
+
+   return 'name ' + comparison + ' || label ' + comparison;
+  }
+
   UIAElement.prototype.getWithName = function (targetName, onlyVisible) {
-    return this.getFirstWithPredicate("name == '" + targetName + "' || label == '" + targetName + "'", onlyVisible);
+    return this.getFirstWithPredicate(_formatPredicate(targetName, false), onlyVisible);
   };
 
   UIAElement.prototype.getAllWithName = function (targetName, onlyVisible) {
-    return this.getAllWithPredicate("name == '" + targetName + "' || label == '" + targetName + "'", onlyVisible);
+    return this.getAllWithPredicate(_formatPredicate(targetName, false), onlyVisible);
   };
 
   UIAElement.prototype.getNameContains = function (targetName, onlyVisible) {
-    return this.getFirstWithPredicate("name contains[c] '" + targetName + "' || label contains[c] '" + targetName + "'", onlyVisible);
+    return this.getFirstWithPredicate(_formatPredicate(targetName, true), onlyVisible);
   };
 
   UIAElement.prototype.getAllNameContains = function (targetName, onlyVisible) {
-    return this.getAllWithPredicate("name contains[c] '" + targetName + "' || label contains[c] '" + targetName + "'", onlyVisible);
+    return this.getAllWithPredicate(_formatPredicate(targetName, true), onlyVisible);
   };
 
 })();
